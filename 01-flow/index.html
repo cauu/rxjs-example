@@ -1,0 +1,70 @@
+<html>
+    <head>
+        <style>
+            .box {
+                margin: 0 auto;
+                margin-top: 30%;
+                height: 100px;
+                width: 100px;
+                transition-property: all;
+                transition-delay: 0.2s;
+            }
+            .box.red {
+                background: red;
+            }
+            .box.blue {
+                background: blue;
+            }
+            .box.yellow {
+                background: yellow;
+            }
+            .box.green {
+                background: green;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <div id="box" class="box red">
+        </div>
+    </body>
+
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/6.2.0/rxjs.umd.js"></script>
+
+    <!-- 流动性 -->
+    <!-- 每隔一秒钟改变一次状态 -->
+    <!-- <script type="text/javascript">
+        const color = ['red', 'blue', 'yellow', 'green']
+        const colorLen = color.length
+        const box = $('#box')
+
+        let current = 0
+        setInterval(function() {
+            box.toggleClass(color[current%colorLen])
+            current++
+            box.toggleClass(color[current%colorLen])
+        }, 1000)
+    </script> -->
+
+    <script type="text/javascript">
+        const Rx = rxjs
+        const { map } = Rx.operators
+
+        const source = Rx.interval(1000).pipe(
+            map(val => {
+                const colors = ['red', 'blue', 'yellow', 'green']
+
+                return {
+                    prev: colors[val % 4],
+                    next: colors[(val + 1) % 4]
+                }
+            })
+        )
+
+        const subscribe = source.subscribe(({prev, next}) => {
+            $('#box').toggleClass(prev)
+            $('#box').toggleClass(next)
+        })
+    </script>
+</html>

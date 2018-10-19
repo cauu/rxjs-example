@@ -1,0 +1,220 @@
+<html>
+    <head>
+        <style>
+            body {
+                text-align: center;
+                padding-top: 200px;
+            }
+            input {
+                width: 200px;
+                height: 40px;
+                font-size: 20px;
+            }
+            .display-wrapper {
+                display: flex;
+                justify-content: center;
+            }
+            .row-display {
+                text-align: left;
+            }
+        </style>
+    </head>
+    <body>
+        <input id="input" />
+        <div class="display-wrapper">
+            <div>
+                <span>
+                    你的输入是:
+                </span>
+                <span id="inputVal">
+                </span>
+            </div>
+            <div>
+                <span>
+                    输出结果是:
+                </span>
+                <span id="outputVal">
+                </span>
+            </div>
+        </div>
+        <div>
+            <button id="continuance">
+                连续输入
+            </button>
+            <button id="same">
+                相同参数
+            </button>
+            <button id="sequence">
+                顺序输入
+            </button>
+        </div>
+        <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/6.2.0/rxjs.umd.js"></script>
+
+        <!-- 常规ajax请求 -->
+        <!-- 3种情况 -->
+        <!-- 1. 避免每次输入都触发http请求(debounce) -->
+        <!-- 2. 如果连续的请求有相同参数，则只发送一个请求 -->
+        <!-- 3. 根据请求发送顺序（而非接收顺序）对返回值排序 -->
+
+        <!-- 测试数据&&全局变量 -->
+        <script type="text/javascript">
+            /** 全局变量 **/
+            const debugData = {
+                continuance: [
+                    {input: 1, delayTime: 0},
+                    {input: 12, delayTime: 0, gap: 900},
+                    {input: 1234, delayTime: 0},
+                    {input: 12346, delayTime: 0},
+                    {input: 1234567, delayTime: 0}
+                ],
+                same: [
+                    {input: 1, delayTime: 5000},
+                    {input: 12, delayTime: 0, gap: 1500},
+                    {input: 1, delayTime: 1000}
+                ],
+                sequence: [
+                    {input: 1, delayTime: 3000},
+                    {input: 2, delayTime: 1000, gap: 1000}
+                ]
+            }
+            let respQueue = []
+            // const debounce = 1000
+            // let lastInputTime = new Date().getTime()
+            let request;
+
+            /** 请求参数 **/
+            let queryDelayTime = 0
+
+            /** 工具方法 **/
+            const queryString = (obj) => Object.keys(obj).reduce((acc, curr, index) => {
+                const currStr = `${curr}=${obj[curr]}`
+                if(index === 0) {
+                    return `${acc}${currStr}`
+                }
+                return `${acc}&${currStr}`
+            }, '?')
+
+            const get = function(url, query) {
+                return $.ajax({
+                    url: `${url}${queryString(query)}`,
+                })
+            }
+
+            const delay = function(timeout) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {resolve()}, timeout)
+                })
+            }
+
+            const clearOuput = () => {
+                respQueue = []
+                $('#outputVal').html('')
+            }
+
+            const setInput = (data) => {
+                $('#inputVal').html(data.map(({input, delayTime=0, gap=0}, index) => {
+                    return `<div class="row-display">
+                        <span>${gap? (gap + 'ms后') : ''}输入: ${input}, 等待${delayTime}ms后返回</span>
+                    </div>`
+                }))
+            }
+
+            const simulateInput = async function(data) {
+                setInput(data)
+                clearOuput()
+                for(let i = 0; i < data.length; i++) {
+                    const { input, delayTime=0 ,gap=100 } = data[i]
+                    await delay(gap)
+                    queryDelayTime = delayTime
+                    $('#input').val(input)
+                    $('#input').trigger('input')
+                }
+            }
+
+            /** 测试事件 **/
+            $('#continuance').on('click', function() {
+                simulateInput(debugData.continuance)
+            })
+            $('#same').on('click', function() {
+                simulateInput(debugData.same)
+            })
+            $('#sequence').on('click', function() {
+                simulateInput(debugData.sequence)
+            })
+        </script>
+
+        <!-- 默认input事件 -->
+        // <script type="text/javascript">
+        //     /** 注册响应事件 **/
+        //     const debounce = 1000
+        //     let lastInputTime = new Date().getTime()
+
+        //     $('#input').on('input', function(e) {
+        //         if(new Date().getTime() - lastInputTime < debounce) {
+        //             request && clearTimeout(request)
+        //             request = null
+        //         }
+
+        //         lastInputTime = new Date().getTime()
+        //         request = setTimeout(function() {
+        //             get('http://127.0.0.1:8080/ping', {
+        //                 input: e.target.value,
+        //                 delayTime: queryDelayTime
+        //             }).done(function(res) {
+        //                 respQueue.push(res)
+        //                 $('#outputVal').html(respQueue.map((val, index) => {
+        //                     return `<div>${index+1}. ${val}</div>`
+        //                 }))
+        //             })
+        //         }, debounce)
+        //     })
+        // </script>
+
+        <!-- rxjs implementation -->
+        <script type="text/javascript">
+            const Rx = rxjs
+            const { fromEvent, from } = Rx
+            const { map, debounceTime, distinctUntilChanged, switchMap } = Rx.operators
+
+            const inputObservable = fromEvent($('#input'), 'input')
+
+            const optimizedInput = inputObservable.pipe(
+                map(e => e.target.value),
+                debounceTime(1000),
+                distinctUntilChanged(),
+                switchMap((val) => httpObserver('http://127.0.0.1:8080/ping', {
+                    input: val,
+                    delayTime: queryDelayTime
+                }))
+            )
+
+            const httpObserver = (url, query) => from(new Promise((resolve, reject) => {
+                get(url, query).done((res) => {
+                    resolve(res)
+                })
+            }))
+
+            const subscribe = optimizedInput
+                /** 不使用switchMap的场景 **/
+                // .subscribe((val) => {
+                //     httpObserver('http://127.0.0.1:8080/ping', {
+                //         input: val,
+                //         delayTime: queryDelayTime
+                //     }).subscribe(res => {
+                //         respQueue.push(res)
+                //         $('#outputVal').html(respQueue.map((val, index) => {
+                //             return `<div>${index+1}. ${val}</div>`
+                //         }))
+                //     })
+                // })
+                /** 使用switchMap **/
+                .subscribe(res => {
+                    respQueue.push(res)
+                    $('#outputVal').html(respQueue.map((val, index) => {
+                        return `<div>${index+1}. ${val}</div>`
+                    }))
+                })
+        </script>
+    </body>
+</html>

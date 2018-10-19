@@ -1,0 +1,113 @@
+<html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                border: 1px solid black;
+            }
+            .box {
+                position: absolute;
+                height: 100px;
+                width: 100px;
+                background: black;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="box" class="box">
+        </div>
+
+        <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/6.2.0/rxjs.umd.js"></script>
+
+        <!-- 拖动box -->
+        <!-- <script type="text/javascript">
+            const box = $('#box')
+            const max = (a,b) => a >= b ? a : b
+
+            let startX, startY
+            let dragStart = false
+            const onStart = (e) => {
+                const event = (e.originalEvent.targetTouches && e.originalEvent.targetTouches[0]) || e
+
+                startX = event.clientX
+                startY = event.clientY
+                dragStart = true
+            }
+            const onMove = (e) => {
+                if(!dragStart) return
+
+                const event = (e.originalEvent.targetTouches && e.originalEvent.targetTouches[0]) || e
+
+                const offsetX = event.clientX - startX
+                const offsetY = event.clientY - startY
+                startX = event.clientX
+                startY = event.clientY
+
+                box.offset(function(index, old) {
+                    return {
+                        top: max(old.top + offsetY, 0),
+                        left: max(old.left + offsetX, 0)
+                    }
+                })
+            }
+            const onEnd = () => dragStart = false
+
+            box.on('touchstart', onStart)
+            box.mousedown(onStart)
+
+            $('body').on('touchmove', onMove)
+            $('body').mousemove(onMove)
+
+            $('body').on('touchend', onEnd)
+            $('body').mouseup(onEnd)
+        </script> -->
+
+        <script type="text/javascript">
+            const Rx = rxjs
+            const { fromEvent } = Rx
+            const { switchMap, map, scan, concatMap, merge, takeUntil, take } = Rx.operators
+
+            function registerDragObserver(item, container) {
+                const mouseDown = fromEvent(item, 'mousedown')
+                const mouseMove = fromEvent(container, 'mousemove')
+                const mouseUp = fromEvent(container, 'mouseup')
+
+                const touchStart = fromEvent(item, 'touchstart').pipe(map(e => e.originalEvent.targetTouches[0]))
+                const touchMove = fromEvent(container, 'touchmove').pipe(map(e => e.originalEvent.targetTouches[0]))
+                const touchEnd = fromEvent(container, 'touchend').pipe(map(e => e.originalEvent.targetTouches[0]))
+
+                const startObserver = mouseDown.pipe(merge(touchStart))
+                const moveObserver = mouseMove.pipe(merge(touchMove))
+                const endObserver = mouseUp.pipe(merge(touchEnd))
+
+                const getMovementOffset = ({x, y, offX, offY}, event) => ({
+                    x: event.clientX,
+                    y: event.clientY,
+                    offX: event.clientX - x,
+                    offY: event.clientY - y
+                })
+
+                startObserver.pipe(
+                    map((event) => {
+                        return ({x: event.clientX, y: event.clientY})
+                    }),
+                    switchMap(({x, y}) => moveObserver.pipe(
+                        scan(getMovementOffset, {x, y, offX: 0, offY: 0}),
+                        takeUntil(endObserver)
+                    )),
+                ).subscribe(({ offX, offY }) => {
+                    item.offset(function(index, old) {
+                        return {
+                            top: old.top + offY,
+                            left: old.left + offX
+                        }
+                    })
+                })
+            }
+
+            registerDragObserver($('#box'), $('body'))
+        </script>
+    </body>
+</html>
