@@ -13,8 +13,23 @@
             .display-wrapper {
                 display: flex;
                 justify-content: center;
+                padding: 20px;
             }
             .row-display {
+                text-align: left;
+            }
+            .display-wrapper .output-wrapper {
+                border: 1px solid black;
+                width: 100px;
+                text-align: left;
+                margin: 10px;
+                padding: 20px;
+            }
+            .display-wrapper .input-wrapper {
+                border: 1px solid black;
+                width: 300px;
+                margin: 10px;
+                padding: 20px;
                 text-align: left;
             }
         </style>
@@ -22,19 +37,19 @@
     <body>
         <input id="input" />
         <div class="display-wrapper">
-            <div>
+            <div class="input-wrapper">
                 <span>
                     你的输入是:
                 </span>
-                <span id="inputVal">
-                </span>
+                <ul id="inputVal">
+                </ul>
             </div>
-            <div>
+            <div class="output-wrapper">
                 <span>
                     输出结果是:
                 </span>
-                <span id="outputVal">
-                </span>
+                <ul id="outputVal">
+                </ul>
             </div>
         </div>
         <div>
@@ -114,9 +129,9 @@
 
             const setInput = (data) => {
                 $('#inputVal').html(data.map(({input, delayTime=0, gap=0}, index) => {
-                    return `<div class="row-display">
+                    return `<li class="row-display">
                         <span>${gap? (gap + 'ms后') : ''}输入: ${input}, 等待${delayTime}ms后返回</span>
-                    </div>`
+                    </li>`
                 }))
             }
 
@@ -145,31 +160,31 @@
         </script>
 
         <!-- 默认input事件 -->
-        // <script type="text/javascript">
-        //     /** 注册响应事件 **/
-        //     const debounce = 1000
-        //     let lastInputTime = new Date().getTime()
+        <script type="text/javascript">
+            // /** 注册响应事件 **/
+            // const debounce = 1000
+            // let lastInputTime = new Date().getTime()
 
-        //     $('#input').on('input', function(e) {
-        //         if(new Date().getTime() - lastInputTime < debounce) {
-        //             request && clearTimeout(request)
-        //             request = null
-        //         }
+            // $('#input').on('input', function(e) {
+            //     if(new Date().getTime() - lastInputTime < debounce) {
+            //         request && clearTimeout(request)
+            //         request = null
+            //     }
 
-        //         lastInputTime = new Date().getTime()
-        //         request = setTimeout(function() {
-        //             get('http://127.0.0.1:8080/ping', {
-        //                 input: e.target.value,
-        //                 delayTime: queryDelayTime
-        //             }).done(function(res) {
-        //                 respQueue.push(res)
-        //                 $('#outputVal').html(respQueue.map((val, index) => {
-        //                     return `<div>${index+1}. ${val}</div>`
-        //                 }))
-        //             })
-        //         }, debounce)
-        //     })
-        // </script>
+            //     lastInputTime = new Date().getTime()
+            //     request = setTimeout(function() {
+            //         get('http://127.0.0.1:8080/ping', {
+            //             input: e.target.value,
+            //             delayTime: queryDelayTime
+            //         }).done(function(res) {
+            //             respQueue.push(res)
+            //             $('#outputVal').html(respQueue.map((val, index) => {
+            //                 return `<li>${val}</li>`
+            //             }))
+            //         })
+            //     }, debounce)
+            // })
+        </script>
 
         <!-- rxjs implementation -->
         <script type="text/javascript">
@@ -204,7 +219,7 @@
                 //     }).subscribe(res => {
                 //         respQueue.push(res)
                 //         $('#outputVal').html(respQueue.map((val, index) => {
-                //             return `<div>${index+1}. ${val}</div>`
+                //             return `<div>${val}</div>`
                 //         }))
                 //     })
                 // })
@@ -212,7 +227,7 @@
                 .subscribe(res => {
                     respQueue.push(res)
                     $('#outputVal').html(respQueue.map((val, index) => {
-                        return `<div>${index+1}. ${val}</div>`
+                        return `<li>${val}</li>`
                     }))
                 })
         </script>
